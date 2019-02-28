@@ -14,17 +14,28 @@ void resetTimer(){
     timeOffest = millis();
 }
 
-char getNextState(){
+void getNextState(auto state){
     int incomingByte = 0;
     if (Serial.available() > 0) {
         incomingByte = Serial.read();
         return char(incomingByte);
+        switch(incomingByte){
+            case REST:
+                state = rest;
+                break;
+            case SOUND:
+                state = sound;
+                break;
+            case BALANCE:
+                state = balance;
+                break;
+            case DRIVE:
+                state = drive;
+                break;
+            default:
+                break;
+        }
     }
-}
-
-auto updateState(auto state){
-    char nextState = getNextState();
-    
 }
 
 auto rest = [] () {
@@ -49,5 +60,5 @@ void setup() {
 
 void loop() {
     state();
-    // state = updateState(state);
+    getNextState();
 }
