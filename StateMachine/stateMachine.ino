@@ -1,21 +1,16 @@
-#include <Servo.h>
+#define REST 'r'
+#define SOUND 's'
+#define BALANCE 'b'
+#define DRIVE 'd'
 
-Servo myservo;
-
-int potpin = 0;  // analog pin used to connect the potentiometer
-int val;    // variable to read the value from the analog pin
-int posX = 60;
-int posY = 90;
-unsigned long time;
 unsigned long timeOffest;
 
-void updateTimer(){
-    time = millis() - timeOffest;
+unsigned long getTime(){
+    return millis() - timeOffest;
 }
 
 void resetTimer(){
     timeOffest = millis();
-    // Serial.println(timeOffest);
 }
 
 char getNextState(){
@@ -29,33 +24,23 @@ char getNextState(){
 char updateState(char state){
     char nextState = getNextState();
     switch (state){
-        case 'R':
-            if (nextState == 'S' || nextState == 'B'){
-                resetTimer();
+        case REST:
+            if (nextState == SOUND || nextState == BALANCE){
                 return nextState;
             } else { return state; }
             break;
-        case 'S':
-            if (nextState == 'F' || nextState == 'R'){
-                resetTimer();
+        case SOUND:
+            if (nextState == 'F' || nextState == REST){
                 return nextState;
             } else { return state; }
             break;
-        case 'F':
-            if (nextState == 'S'){
-                resetTimer();
+        case BALANCE:
+            if (nextState == REST || nextState == 'W'){
                 return nextState;
             } else { return state; }
             break;
-        case 'B':
-            if (nextState == 'R' || nextState == 'W'){
-                resetTimer();
-                return nextState;
-            } else { return state; }
-            break;
-        case 'W':
-            if (nextState == 'R'){
-                resetTimer();
+        case DRIVE:
+            if (nextState == SOUND){
                 return nextState;
             } else { return state; }
             break;
@@ -65,51 +50,36 @@ char updateState(char state){
     }
 }
 
-void Rest(){
+void rest(){
 }
 
-void Step(){
+void sound(){
 }
 
-int Analog2Angle(int analogInput){
-    return analogInput/(1023/180);
+void balance(){
 }
 
-void Follow(){
-}
-
-void Blink(){
-}
-
-void Switch(){
+void drive(){
 }
 
 void setup() {
   Serial.begin(9600);
-  myservo.attach(3);
-  digitalWrite(13,LOW);
-  pinMode(2,INPUT);
-  digitalWrite(2, HIGH);
 }
 
-char state = 'R';
+char state = REST;
 void loop() {
-    updateTimer();
     switch (state) {
-        case 'R':
-            Rest();
+        case REST:
+            rest();
             break;
-        case 'S':
-            Step();
+        case SOUND:
+            sound();
             break;
-        case 'F':
-            Follow();
+        case BALANCE:
+            balance();
             break;
-        case 'B':
-            Blink();
-            break;
-        case 'W':
-            Switch();
+        case DRIVE:
+            drive();
             break;
         default:
             Serial.print("default: ");
