@@ -234,13 +234,8 @@ void loop() {
   motorPower2 = constrain(motorPower1, -255, 255);
   motorPower3 = constrain(motorPower1, -255, 255);
   setMotors(motorPower1, motorPower2, motorPower3);
-    }
 
-// The ISR will be called every 5 milliseconds
-ISR(TIMER1_COMPA_vect)
-{
-
-  // calculate the angle of inclination
+  //PID loop
   currentAngle = ypr[0];
   error = currentAngle - targetAngle;
   errorSum = errorSum + error;  
@@ -249,6 +244,20 @@ ISR(TIMER1_COMPA_vect)
   motorPower1 = Kp*(error) + Ki*(errorSum)*sampleTime - Kd*(currentAngle-prevAngle)/sampleTime;
   prevAngle = currentAngle;
 }
+
+//// The ISR will be called every 5 milliseconds
+//ISR(TIMER1_COMPA_vect)
+//{
+//
+//  // calculate the angle of inclination
+//  currentAngle = ypr[0];
+//  error = currentAngle - targetAngle;
+//  errorSum = errorSum + error;  
+//  errorSum = constrain(errorSum, -300, 300);
+//  //calculate output from P, I and D values
+//  motorPower1 = Kp*(error) + Ki*(errorSum)*sampleTime - Kd*(currentAngle-prevAngle)/sampleTime;
+//  prevAngle = currentAngle;
+//}
 
 
 
