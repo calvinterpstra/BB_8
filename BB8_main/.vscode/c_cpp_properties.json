@@ -4,7 +4,8 @@
             "name": "Win32",
             "includePath": [
                 "${Hfiles}/**",
-                "${workspaceFolder}/Hfiles"
+                "${workspaceFolder}/Hfiles",
+                "${workspaceFolder}/Hfiles/avr"
             ],
             "defines": [
                 "_DEBUG",
