@@ -14,40 +14,16 @@ void resetTimer(){
 }
 
 char getNextState(){
-    int incomingByte = 0;
+    // int incomingByte = 0;
     if (Serial.available() > 0) {
-        incomingByte = Serial.read();
+        int incomingByte = Serial.read();
         return char(incomingByte);
     }
 }
 
 char updateState(char state){
     char nextState = getNextState();
-    switch (state){
-        case REST:
-            if (nextState == SOUND || nextState == BALANCE){
-                return nextState;
-            } else { return state; }
-            break;
-        case SOUND:
-            if (nextState == 'F' || nextState == REST){
-                return nextState;
-            } else { return state; }
-            break;
-        case BALANCE:
-            if (nextState == REST || nextState == 'W'){
-                return nextState;
-            } else { return state; }
-            break;
-        case DRIVE:
-            if (nextState == SOUND){
-                return nextState;
-            } else { return state; }
-            break;
-        default:
-            return state; 
-            break;
-    }
+    return nextState;
 }
 
 void rest(){
