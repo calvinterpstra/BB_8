@@ -28,54 +28,43 @@
 
 // ---------------------------------------LAYOUT----------------------------------------------:
 
-volatile int motorPower1;
-volatile int motorPower2;
-volatile int motorPower3;
-volatile byte count=0;
+// volatile int motorPower1;
+// volatile int motorPower2;
+// volatile int motorPower3;
+// volatile byte count=0;
 
-void setMotors(int motor1Power, int Motor2_Speed, int Motor3_Speed) {
+void setMotors(int motor1Power, int motor2Power, int motor3Power) {
   if(motor1Power >= 0) {
     analogWrite(Motor1_PWM_Pin, motor1Power);
-    analogWrite(Motor2_PWM_Pin, motor1Power); //remove later
-    analogWrite(Motor3_PWM_Pin, motor1Power); //remove later
     digitalWrite(Motor1_in1_Pin, LOW);
     digitalWrite(Motor1_in2_Pin, HIGH);
-    digitalWrite(Motor2_in1_Pin, LOW); //remove later
-    digitalWrite(Motor2_in2_Pin, HIGH); //remove later 
-    digitalWrite(Motor3_in1_Pin, LOW); // remove later
-    digitalWrite(Motor3_in2_Pin, HIGH); //remove later
   }
   else {
     analogWrite(Motor1_PWM_Pin, -motor1Power);
-    analogWrite(Motor2_PWM_Pin, -motor1Power); //remove later
-    analogWrite(Motor3_PWM_Pin, -motor1Power); //remove later
     digitalWrite(Motor1_in1_Pin, HIGH);
     digitalWrite(Motor1_in2_Pin, LOW);
-    digitalWrite(Motor2_in1_Pin, HIGH); //remove later
-    digitalWrite(Motor2_in2_Pin, LOW); //remove later 
-    digitalWrite(Motor3_in1_Pin, HIGH); // remove later
-    digitalWrite(Motor3_in2_Pin, LOW); //remove later
+
   }
-//  if(motor1Power >= 0) {
-///    analogWrite(Motor2_PWM_Pin, motor1Power);
-//    digitalWrite(Motor2_in1_Pin, LOW);
-//    digitalWrite(Motor2_in2_Pin, HIGH);
-//  }
-//  else {
-//    analogWrite(Motor2_PWM_Pin, -motor1Power);
-//    digitalWrite(Motor2_in1_Pin, LOW);
-//    digitalWrite(Motor2_in2_Pin, HIGH);
-//  }
-//  if(motor1Power >= 0) {
-//    analogWrite(Motor3_PWM_Pin, motor1Power);
-//    digitalWrite(Motor3_in1_Pin, HIGH);
-//    digitalWrite(Motor3_in2_Pin, LOW);
-//  }
-//  else {
-//    analogWrite(Motor3_PWM_Pin, -motor1Power);
-//    digitalWrite(Motor3_in1_Pin, HIGH);
-//    digitalWrite(Motor3_in2_Pin, LOW);
-//  }
+  if(motor1Power >= 0) {
+  analogWrite(Motor2_PWM_Pin, motor2Power);
+    digitalWrite(Motor2_in1_Pin, LOW);
+   digitalWrite(Motor2_in2_Pin, HIGH);
+  }
+  else {
+    analogWrite(Motor2_PWM_Pin, -motor2Power);
+    digitalWrite(Motor2_in1_Pin, LOW);
+    digitalWrite(Motor2_in2_Pin, HIGH);
+  }
+  if(motor1Power >= 0) {
+    analogWrite(Motor3_PWM_Pin, motor3Power);
+    digitalWrite(Motor3_in1_Pin, HIGH);
+    digitalWrite(Motor3_in2_Pin, LOW);
+  }
+  else {
+    analogWrite(Motor3_PWM_Pin, -motor3Power);
+    digitalWrite(Motor3_in1_Pin, HIGH);
+    digitalWrite(Motor3_in2_Pin, LOW);
+  }
 }
 
 // ---------------------------------------PID----------------------------------------------:
