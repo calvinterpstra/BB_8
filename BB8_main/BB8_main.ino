@@ -14,80 +14,82 @@
 #define    ACC_FULL_SCALE_8_G        0x10
 #define    ACC_FULL_SCALE_16_G       0x18
 
-#define Motor1_PWM_Pin  11
+#define Motor1_PWM_Pin  5
 #define Motor1_in1_Pin  6
 #define Motor1_in2_Pin  7
-#define Motor2_PWM_Pin  5
-#define Motor2_in1_Pin  4
-#define Motor2_in2_Pin  8
-#define Motor3_PWM_Pin  3
-#define Motor3_in1_Pin  9
-#define Motor3_in2_Pin  2
+#define Motor2_PWM_Pin  3
+#define Motor2_in1_Pin  8
+#define Motor2_in2_Pin  9
+#define Motor3_PWM_Pin  11
+#define Motor3_in1_Pin  10
+#define Motor3_in2_Pin  12
 
-#define Kp  2
-#define Kd  0.005
-#define Ki  2
-#define sampleTime  0.005
-#define targetAngle 0
+
 
 // ---------------------------------------LAYOUT----------------------------------------------:
 
 volatile int motorPower1;
 volatile int motorPower2;
 volatile int motorPower3;
-volatile float currentAngle, prevAngle=0, error, prevError=0, errorSum=0;
 volatile byte count=0;
 
 void setMotors(int motor1Power, int Motor2_Speed, int Motor3_Speed) {
   if(motor1Power >= 0) {
     analogWrite(Motor1_PWM_Pin, motor1Power);
+    analogWrite(Motor2_PWM_Pin, motor1Power); //remove later
+    analogWrite(Motor3_PWM_Pin, motor1Power); //remove later
     digitalWrite(Motor1_in1_Pin, LOW);
     digitalWrite(Motor1_in2_Pin, HIGH);
+    digitalWrite(Motor2_in1_Pin, LOW); //remove later
+    digitalWrite(Motor2_in2_Pin, HIGH); //remove later 
+    digitalWrite(Motor3_in1_Pin, LOW); // remove later
+    digitalWrite(Motor3_in2_Pin, HIGH); //remove later
   }
   else {
     analogWrite(Motor1_PWM_Pin, -motor1Power);
+    analogWrite(Motor2_PWM_Pin, -motor1Power); //remove later
+    analogWrite(Motor3_PWM_Pin, -motor1Power); //remove later
     digitalWrite(Motor1_in1_Pin, HIGH);
     digitalWrite(Motor1_in2_Pin, LOW);
+    digitalWrite(Motor2_in1_Pin, HIGH); //remove later
+    digitalWrite(Motor2_in2_Pin, LOW); //remove later 
+    digitalWrite(Motor3_in1_Pin, HIGH); // remove later
+    digitalWrite(Motor3_in2_Pin, LOW); //remove later
   }
-  if(Motor2_Speed >= 0) {
-    analogWrite(Motor2_PWM_Pin, Motor2_Speed);
-    digitalWrite(Motor2_in1_Pin, LOW);
-    digitalWrite(Motor2_in2_Pin, HIGH);
-  }
-  else {
-    analogWrite(Motor2_PWM_Pin, -Motor2_Speed);
-    digitalWrite(Motor2_in1_Pin, LOW);
-    digitalWrite(Motor2_in2_Pin, HIGH);
-  }
-  if(motor1Power >= 0) {
-    analogWrite(Motor3_PWM_Pin, Motor3_Speed);
-    digitalWrite(Motor3_in1_Pin, HIGH);
-    digitalWrite(Motor3_in2_Pin, LOW);
-  }
-  else {
-    analogWrite(Motor3_PWM_Pin, -Motor3_Speed);
-    digitalWrite(Motor3_in1_Pin, HIGH);
-    digitalWrite(Motor3_in2_Pin, LOW);
-  }
+//  if(motor1Power >= 0) {
+///    analogWrite(Motor2_PWM_Pin, motor1Power);
+//    digitalWrite(Motor2_in1_Pin, LOW);
+//    digitalWrite(Motor2_in2_Pin, HIGH);
+//  }
+//  else {
+//    analogWrite(Motor2_PWM_Pin, -motor1Power);
+//    digitalWrite(Motor2_in1_Pin, LOW);
+//    digitalWrite(Motor2_in2_Pin, HIGH);
+//  }
+//  if(motor1Power >= 0) {
+//    analogWrite(Motor3_PWM_Pin, motor1Power);
+//    digitalWrite(Motor3_in1_Pin, HIGH);
+//    digitalWrite(Motor3_in2_Pin, LOW);
+//  }
+//  else {
+//    analogWrite(Motor3_PWM_Pin, -motor1Power);
+//    digitalWrite(Motor3_in1_Pin, HIGH);
+//    digitalWrite(Motor3_in2_Pin, LOW);
+//  }
 }
 
 // ---------------------------------------PID----------------------------------------------:
-
-void init_PID() {  
-  // initialize Timer1
-  cli();          // disable global interrupts
-  TCCR1A = 0;     // set entire TCCR1A register to 0
-  TCCR1B = 0;     // same for TCCR1B    
-  // set compare match register to set sample time 5ms
-  OCR1A = 9999;    
-  // turn on CTC mode
-  TCCR1B |= (1 << WGM12);
-  // Set CS11 bit for prescaling by 8
-  TCCR1B |= (1 << CS11);
-  // enable timer compare interrupt
-  TIMSK1 |= (1 << OCIE1A);
-  sei();          // enable global interrupts
-}
+double kp = 0.1;
+double ki = 0.5;
+double kd = 0.2;
+double Setpoint = 0;
+ 
+unsigned long currentTime, previousTime;
+double elapsedTime;
+double error;
+double lastError;
+double input, output, doutput, setPoint;
+double cumError, rateError;
 
 // ------------------------------------------MPU----------------------------------------------:
 
@@ -147,7 +149,7 @@ void setup()
   // Request continuous magnetometer measurements in 16 bits
   I2CwriteByte(MAG_ADDRESS,0x0A,0x16);
   
-   pinMode(13, OUTPUT);
+  pinMode(13, OUTPUT);
   Timer1.initialize(10000);         // initialize timer1, and set a 1/2 second period
   Timer1.attachInterrupt(callback);  // attaches callback() as a timer overflow interrupt
   
@@ -167,9 +169,6 @@ void setup()
   pinMode(Motor3_PWM_Pin, OUTPUT);
   pinMode(Motor3_in1_Pin, OUTPUT);
   pinMode(Motor3_in2_Pin, OUTPUT);
-
-  // initialize PID sampling loop
-  //init_PID();
 }
 
 
@@ -247,22 +246,40 @@ void loop()
 //  delay(100);    
 
   //PID loop
-  int16_t currentAngle = -(Buf[0]<<8 | Buf[1]);
-  int16_t error = currentAngle - targetAngle;
-  int16_t errorSum = errorSum + error;  
-  errorSum = constrain(errorSum, -3000, 3000);
-  //calculate output from P, I and D values
-  motorPower1 = Kp*(error);
-  //+ Ki*(errorSum)*sampleTime - Kd*(currentAngle-prevAngle)/sampleTime;
-  int16_t prevAngle = currentAngle;
+  input = map(-(Buf[0]<<8 | Buf[1]), -8500, 8500, -1023, 1023);                //read from rotary encoder connected to A0
+  output = map(computePID(input), -1000000, 1000000, -255, 255);
+  
+  if(output >= 255){
+    output = 255;
+  }
+  if(output <= -255){
+    output = -255;
+  }
 
-//  // set motor power after constraining it
-  int16_t motor1Power = map(motorPower1, -40000, 40000, -250, 250);
-  int16_t motor2Power = map(motorPower1, -35000, 35000, -255, 255);
-  int16_t motor3Power = map(motorPower1, -35000, 35000, -255, 255);
-  setMotors(motor1Power, motor2Power, motor3Power);
-  Serial.println(error);
+  //MotorControl
+  setMotors(output, output, output);
+  Serial.print(input);
+  Serial.print("\t");
+  Serial.print(output);
+  Serial.println("");
 }
+ 
+double computePID(double inp){     
+        currentTime = millis();                                      //get current time
+        elapsedTime = (double)(currentTime - previousTime);          //compute time elapsed from previous computation
+        
+        error = Setpoint - inp;                                      // determine error
+        cumError += error * elapsedTime;                             // compute integral
+        rateError = (error - lastError)/elapsedTime;                 // compute derivative
+ 
+        double out = kp*error + ki*cumError + kd*rateError; 
+        
+        lastError = error;                                           //remember current error
+        previousTime = currentTime;                                  //remember current time
+ 
+        return out;                                                  //have function return the PID output
+}
+
 
 
 
