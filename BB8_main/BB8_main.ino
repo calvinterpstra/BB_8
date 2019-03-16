@@ -28,11 +28,6 @@
 
 // ---------------------------------------LAYOUT----------------------------------------------:
 
-// volatile int motorPower1;
-// volatile int motorPower2;
-// volatile int motorPower3;
-// volatile byte count=0;
-
 void setMotors(int motor1Power, int motor2Power, int motor3Power) {
   if(motor1Power >= 0) {
     analogWrite(Motor1_PWM_Pin, motor1Power);
