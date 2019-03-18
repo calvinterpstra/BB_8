@@ -2,16 +2,8 @@
 #define SOUND 's'
 #define BALANCE 'b'
 #define DRIVE 'd'
-
-//microphone variables
-int val = 0;
-int freq = 0;
-int counter = 0;
-unsigned long timer = 0;
-unsigned long start_time = 0;
-int STARTBAND_LOW = 1700;
-int STARTBAND_HIGH= 1900;  //band 1700-1900 Hz (group 111)
-void count() {counter = counter + 1;}
+#include "microphoneListener.h"
+ 
 
 unsigned long timeOffest;
 
@@ -23,35 +15,10 @@ void resetTimer(){
     timeOffest = millis();
 }
 
-char getNextState(){
-    // int incomingByte = 0;
-    if (Serial.available() > 0) {
-        int incomingByte = Serial.read();
-        return char(incomingByte);
-    }
-}
 
-char updateState(char state){
-    char nextState = getNextState();
-    return nextState;
-}
 
 void rest(){
 }
-
-void sound(){
-  timer = millis();
-  if((timer - start_time) > 100){
-    freq        = counter * 10;
-    start_time  = millis();
-    Serial.println(freq);
-    if ((freq>=STARTBAND_LOW)&&(freq<=STARTBAND_HIGH)}{
-      updateState(BALANCE);
-    }
-    counter     = 0;
-}
-
-
 
 
 void balance(){
@@ -62,7 +29,7 @@ void drive(){
 
 void setup() {
   Serial.begin(9600);
-  attachInterrupt(digitalPinToInterrupt(2), count , RISING); //Microphone pin
+  setupMicrophone();
 }
 
 char state = REST;
@@ -72,7 +39,8 @@ void loop() {
             rest();
             break;
         case SOUND:
-            sound();
+            byte signal_received = listenMicrophone();
+            if (signal_received){ updateState(BALANCE);}
             break;
         case BALANCE:
             balance();
@@ -80,10 +48,28 @@ void loop() {
         case DRIVE:
             drive();
             break;
-        default:
-            Serial.print("default: ");
-            Serial.println(state);
+       knmbkekvnb default:
             break;
     }
-    state = updateState(state);
+    //Serial.write(state);
+    readKeyboard();
+}
+
+void readKeyboard(){
+    int incomingByte = 0;
+    if (Serial.available() > 0) {
+        int incomingByte = Serial.read();
+        if (incomingByte==63){
+          Serial.print("Current state:");
+          Serial.println(state);
+        }
+        else if (incomingByte != 10){    updateState(incomingByte); }
+    }
+}
+
+
+void updateState(char nextState){
+    state = nextState;
+    Serial.print("new state:");
+    Serial.println(state);
 }
