@@ -1,7 +1,6 @@
 {
-    "board": "esp8266:esp8266:d1",
+    "board": "arduino:avr:uno",
     "programmer": "AVR ISP",
     "port": "COM7",
-    "sketch": "BB8_main\\BB8_main.ino",
-    "configuration": "xtal=80,vt=flash,exception=disabled,eesz=4M,ip=lm2f,dbg=Disabled,lvl=None____,wipe=none,baud=921600"
+    "sketch": "BB8_main\\BB8_main.ino"
 }
