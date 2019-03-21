@@ -7,12 +7,12 @@ unsigned long start_time = 0;
 int STARTBAND_LOW = 1700;
 int STARTBAND_HIGH= 1900;  //band 1700-1900 Hz (group 111)
 void count() {counter = counter + 1;}
-
+#define microphone_pin 2
 
 
 
 void setupMicrophone(){
-      attachInterrupt(digitalPinToInterrupt(2), count , RISING); //Microphone pin
+      attachInterrupt(digitalPinToInterrupt(microphone_pin), count , RISING); //Microphone pin
 }
 
 
