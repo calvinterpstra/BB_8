@@ -1,18 +1,18 @@
-#define OFF 'o'
-#define OFF_BWM 0
-#define SOUND 's'
-#define BALANCE 'b'
+#define OFF         'o'
+#define OFF_BWM     0
+#define SOUND       's'
+#define BALANCE     'b'
 #define BALANCE_BWM 32
-#define FORWARD 'f'
+#define FORWARD     'f'
 #define FORWARD_BWM 96
-#define LEFT 'l'
-#define LEFT_BWM 160
-#define RIGHT 'r'
-#define RIGHT_BWM 224
+#define LEFT        'l'
+#define LEFT_BWM    160
+#define RIGHT       'r'
+#define RIGHT_BWM   224
 
 #include "microphoneListener.h"
-#define microphone_pin 2
-#define pin_to_uno 3
+#define  microphone_pin 2
+#define  pin_to_uno 3
 
 
 
@@ -38,11 +38,13 @@ void resetTimer()
   timeOffest = millis();
 }
 
-void off(){    analogWrite(pin_to_uno,OFF_BWM);}
-void balance() analogWrite(pin_to_uno, BALANCE_BWM); }
-void forward_drive(){analogWrite(pin_to_uno, FORWARD_BWM);}
-void left_rotate() {analogWrite(pin_to_uno, LEFT_BWM);}
-void right_rotate() {analogWrite(pin_to_uno, RIGHT_BWM);}
+
+//states definitions
+void off          () { analogWrite(pin_to_uno, OFF_BWM    ); }
+void balance      () { analogWrite(pin_to_uno, BALANCE_BWM); }
+void forward_drive() { analogWrite(pin_to_uno, FORWARD_BWM); }
+void left_rotate  () { analogWrite(pin_to_uno, LEFT_BWM   ); }
+void right_rotate () { analogWrite(pin_to_uno, RIGHT_BWM  ); }
 
 
 void setup()
@@ -53,7 +55,7 @@ void setup()
 
 }
 
-char state = REST;
+char state = OFF;
 void updateState(char nextState)
 {
   state = nextState;
@@ -65,35 +67,29 @@ void loop()
 {
   switch (state)
   {
-    case OFF:
-      off();
-      break;
-    case SOUND:
+    case OFF    : { off(); break;}
+    case BALANCE: { balance(); break;}
+    case LEFT   : { left_rotate(); break;}
+    case RIGHT  : { right_rotate(); break;}
+    case FORWARD: { forward_drive(); break;}
+    case SOUND  : {
       //byte signal_received = ;
       if (listenMicrophone())  {
         updateState(BALANCE);
         detachInterrupt(digitalPinToInterrupt(microphone_pin)); //done listening
       }
       break;
-    case BALANCE:
-      balance();
-      break;
-    case LEFT: 
-      left_rotate();
-      break;
-    case RIGHT:
-      right_rotate();
-      break;
-    case FORWARD:
-      forward_drive();
-      break;
-    default:
-      break;
+    }
+    default:{      break;}
   }
   //Serial.write(state);
   readKeyboard();
 }
 
+void writeCurrentState(){
+  Serial.print("Current state:");
+  Serial.println(state);
+}
 
 void readKeyboard()
 {
@@ -101,14 +97,7 @@ void readKeyboard()
   if (Serial.available() > 0)
   {
     int incomingByte = Serial.read();
-    if (incomingByte == 63)
-    {
-      Serial.print("Current state:");
-      Serial.println(state);
-    }
-    else if (incomingByte != 10)
-    {
-      updateState(incomingByte);
-    }
+    if (incomingByte == 63)      { writeCurrentState(            ); } //get current state when typed '?'
+    else if (incomingByte != 10) { updateState      (incomingByte); } //update state if char is not empty
   }
 }
