@@ -18,7 +18,7 @@ void loop() {
   // ==== Storing the incoming data into a String variable
   while (HC12.available()) {             // If HC-12 has data
     incomingByte = HC12.read();
-    readBuffer += char(incomingByte);    // Add each byte to ReadBuffer string variable 
+    readBuffer = char(incomingByte);    // Add each byte to ReadBuffer string variable 
     Serial.println(readBuffer);
   }
 }
