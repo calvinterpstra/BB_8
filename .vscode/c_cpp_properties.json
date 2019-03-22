@@ -6,7 +6,8 @@
                 "C:\\Users\\Kenrick Trip\\AppData\\Local\\Arduino15\\packages\\esp8266\\tools\\**",
                 "C:\\Users\\Kenrick Trip\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.5.0\\**",
                 "C:\\Program Files (x86)\\Arduino\\tools\\**",
-                "C:\\Program Files (x86)\\Arduino\\hardware\\arduino\\avr\\**"
+                "C:\\Program Files (x86)\\Arduino\\hardware\\arduino\\avr\\**",
+                "C:\\Users\\Gerben Rijpkema\\Documents\\GitHub\\BB_8\\BB8_main\\Hfiles\\**"
             ],
             "forcedInclude": [
                 "C:\\Program Files (x86)\\Arduino\\hardware\\arduino\\avr\\cores\\arduino\\Arduino.h"
