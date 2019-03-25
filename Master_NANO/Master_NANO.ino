@@ -1,6 +1,5 @@
 #define OFF         'o'
 #define OFF_BWM     0
-#define SOUND       's'
 #define BALANCE     'b'
 #define BALANCE_BWM 32
 #define FORWARD     'f'
@@ -10,15 +9,20 @@
 #define RIGHT       'r'
 #define RIGHT_BWM   224
 
-#include "microphoneListener.h"
 #define  microphone_pin 2
-#define  pin_to_uno 3
+#define  pin_to_uno  3
+#define  HC12_setPin 6
+
+
+#include <SoftwareSerial.h>
+
+SoftwareSerial HC12(10, 11); // HC-12 TX Pin, HC-12 RX Pin
 
 
 
 
 
-///SCRIPT FOR NANO
+///SCRIPT FOR NANO (Receiver)
 
 //0   1-63: balance, 64-127:forward, 128-191:left rotate, 192:254: right rotate
 //off      32           96             160                    224      
@@ -49,9 +53,11 @@ void right_rotate () { analogWrite(pin_to_uno, RIGHT_BWM  ); }
 
 void setup()
 {
-  Serial.begin(9600);
-  setupMicrophone();
+  Serial.begin(9600);             // Open serial port to computer
+  HC12.begin(9600);               // Open serial port to HC12
+  pinMode(HC12_setPin, OUTPUT);
   pinMode(pin_to_uno, OUTPUT);
+  digitalWrite(HC12_setPin, HIGH);     // HC-12 normal mode
 
 }
 
@@ -72,18 +78,10 @@ void loop()
     case LEFT   : { left_rotate(); break;}
     case RIGHT  : { right_rotate(); break;}
     case FORWARD: { forward_drive(); break;}
-    case SOUND  : {
-      //byte signal_received = ;
-      if (listenMicrophone())  {
-        updateState(BALANCE);
-        detachInterrupt(digitalPinToInterrupt(microphone_pin)); //done listening
-      }
-      break;
-    }
     default:{      break;}
   }
   //Serial.write(state);
-  readKeyboard();
+  readKeyboardAndHC12();
 }
 
 void writeCurrentState(){
@@ -91,13 +89,18 @@ void writeCurrentState(){
   Serial.println(state);
 }
 
-void readKeyboard()
+void readKeyboardAndHC12()
 {
   int incomingByte = 0;
   if (Serial.available() > 0)
   {
     int incomingByte = Serial.read();
-    if (incomingByte == 63)      { writeCurrentState(            ); } //get current state when typed '?'
-    else if (incomingByte != 10) { updateState      (incomingByte); } //update state if char is not empty
   }
+  while (HC12.available()) {             // If HC-12 has data
+    incomingByte = HC12.read();
+    readBuffer = char(incomingByte);    // Add each byte to ReadBuffer string variable 
+  }
+  if (incomingByte == 63)      { writeCurrentState(            ); } //get current state when typed '?'
+  else if (incomingByte != 10) { updateState      (incomingByte); } //update state if char is not empty
+
 }
