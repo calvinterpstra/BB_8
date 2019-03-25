@@ -1,8 +1,6 @@
 #include <SoftwareSerial.h>
 #include "microphoneListener.h"
 
-
-
 #define setPin 6 //digital
 #define X_Pin  0 //analog
 #define Y_Pin  1 //analog
@@ -25,7 +23,7 @@ void setup() {
 void loop() {
   sendJoystickHC12(); 
   if (listenMicrophone())  {
-    Serial.write("Signaal ontvangen")
+    Serial.write("Signaal ontvangen");
     detachInterrupt(digitalPinToInterrupt(microphone_pin)); //done listening
   }
 
