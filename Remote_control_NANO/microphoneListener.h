@@ -23,7 +23,9 @@ byte listenMicrophone(){
         start_time  = millis();
         Serial.println(freq);
         if ((freq>=STARTBAND_LOW)&&(freq<=STARTBAND_HIGH)){
+          detachInterrupt(digitalPinToInterrupt(microphone_pin)); //done listening
           return 1;
+          
         }
         counter     = 0;
         return 0;
