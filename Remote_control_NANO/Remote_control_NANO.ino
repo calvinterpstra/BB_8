@@ -5,6 +5,9 @@
 #define X_Pin  0 //analog
 #define Y_Pin  1 //analog
 #define Sw_Pin 2 //digital
+#define redPin 3 //digital 
+#define greenPin 5 //digital
+#define bluePin 9 //digital
 
 SoftwareSerial HC12(10, 11);         // HC-12 TX Pin, HC-12 RX Pin
 
@@ -19,6 +22,9 @@ void setup() {
   pinMode(setPin, OUTPUT);
   digitalWrite(setPin, HIGH);           // HC-12 normal, transparent mode
   setupMicrophone();
+  pinMode(redPin, OUTPUT);              // Configuring the LED pins
+  pinMode(greenPin, OUTPUT);
+  pinMode(bluePin, OUTPUT);
 }
 
 void loop() {
@@ -26,6 +32,11 @@ void loop() {
   if (listenMicrophone()){
     Serial.print("Signaal ontvangen");
     detachInterrupt(digitalPinToInterrupt(MICROPHONE_PIN)); //done listening
+    setColor(0, 255, 0);  // Green LED if signal is heard
+  }
+
+  else{
+    setColor(255, 0, 0);  // Red light to indicate signal has not yet been heard
   }
 }
 
@@ -65,5 +76,15 @@ void sendJoystickHC12(){
       //Serial.println("L");
       HC12.print("L");
     }
+}
 
+void setColor(int red, int green, int blue){
+  #ifdef COMMON_ANODE
+    red = 255 - red;
+    green = 255 - green;
+    blue = 255 - blue;
+  #endif
+  analogWrite(redPin, red);
+  analogWrite(greenPin, green);
+  analogWrite(bluePin, blue);  
 }
