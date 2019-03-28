@@ -33,6 +33,7 @@ void loop() {
     Serial.print("Signaal ontvangen");
     detachInterrupt(digitalPinToInterrupt(MICROPHONE_PIN)); //done listening
     setColor(0, 255, 0);  // Green LED if signal is heard
+    delay(1000);
   }
 
   else{
@@ -57,22 +58,18 @@ void sendJoystickHC12(){
   }
   
     if (x <= 700 && x >= 300 && y <= 700 && y >= 300) {
-//      delay(200);
       //Serial.println("S");
       HC12.print("S");
     }
     if (x <= 300 or x >= 700) {
-//      delay(200); 
       //Serial.println("F");
       HC12.print("F");
     }
     if (y <= 300) {
-//      delay(200);
       //Serial.println("R");
       HC12.print("R");
     }
     if (y >= 700) {
-//      delay(200);
       //Serial.println("L");
       HC12.print("L");
     }
