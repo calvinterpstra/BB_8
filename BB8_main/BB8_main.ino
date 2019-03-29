@@ -27,54 +27,52 @@
 #define Motor3_in2_Pin  10
 
 //PID gains:
-double kp = 25;
-double ki = 0.0001;
-double kd = 90;
+double kp = 0.075;
+double ki = 0.00000003;
+double kd = 0.25;
 double pitch_Offset = 1.3;
+int    motor_start_moving = 60;
 
 //motor_layout:
 int motor1Output = 0;
 int motor2Output = 0;
 int motor3Output = 0;
 
-void setMotors(int motor1Power, int motor2Power, int motor3Power) {
-  if (motor1Power >= 0) {
-    analogWrite(Motor1_PWM_Pin, motor1Power);
-    digitalWrite(Motor1_in1_Pin, LOW);
-    digitalWrite(Motor1_in2_Pin, HIGH);
-  }
-  else {
-    analogWrite(Motor1_PWM_Pin, -motor1Power);
-    digitalWrite(Motor1_in1_Pin, HIGH);
-    digitalWrite(Motor1_in2_Pin, LOW);
+unsigned long currentTime, previousTime;
+double elapsedTime;
 
+void setMotor(int motorPower,int motor_PWM_Pin,int motor_in1_pin, int motor_in2_pin){
+  if (motorPower>=0){
+    digitalWrite(motor_in1_pin, LOW);
+    digitalWrite(motor_in2_pin, HIGH);
   }
-  if (motor2Power >= 0) {
-    analogWrite(Motor2_PWM_Pin, motor2Power);
-    digitalWrite(Motor2_in1_Pin, HIGH);
-    digitalWrite(Motor2_in2_Pin, LOW);
+  else{
+    digitalWrite(motor_in1_pin, LOW);
+    digitalWrite(motor_in2_pin, HIGH);
   }
-  else {
-    analogWrite(Motor2_PWM_Pin, -motor2Power);
-    digitalWrite(Motor2_in1_Pin, LOW);
-    digitalWrite(Motor2_in2_Pin, HIGH);
+
+  motorPower = abs(motorPower);
+  if (motorPower>255) {motorPower =255; }
+  if (motorPower>10){
+      analogWrite(motor_PWM_Pin, motorPower+motor_start_moving);
   }
-  if (motor3Power >= 0) {
-    analogWrite(Motor3_PWM_Pin, motor3Power);
-    digitalWrite(Motor3_in1_Pin, HIGH);
-    digitalWrite(Motor3_in2_Pin, LOW);
-  }
-  else {
-    analogWrite(Motor3_PWM_Pin, -motor3Power);
-    digitalWrite(Motor3_in1_Pin, LOW);
-    digitalWrite(Motor3_in2_Pin, HIGH);
-  }
+
+}
+
+void setMotors(int motor1Power, int motor2Power, int motor3Power) {
+  int minimum_power = min(abs(motor1Power), min(abs(motor2Power),abs(motor3Power)));
+  if (abs(motor1Power) == abs(minimum_power)){motor1Power = 0;}
+  else if (abs(motor2Power) == abs(minimum_power)){motor2Power = 0;}
+  else if (abs(motor3Power) == abs(minimum_power)){motor3Power = 0;}
+
+  setMotor(motor1Power,Motor1_PWM_Pin,Motor1_in1_Pin,Motor1_in2_Pin);
+  setMotor(motor2Power,Motor2_PWM_Pin,Motor2_in1_Pin,Motor2_in2_Pin);
+  setMotor(motor3Power,Motor3_PWM_Pin,Motor3_in1_Pin,Motor3_in2_Pin);
 }
 
 //MPU:
-long int ti;
 volatile bool intFlag = false;
-double pitch_input, pitch_output, a1_output, a1_input, a2_output, a2_input;
+double pitch_input, aP_output, a1_output, a1_input, a2_output, a2_input;
 long int cpt = 0;
 
 //KalmanFilter kalmanX(0.001, 0.003, 0.03);
@@ -86,8 +84,7 @@ long int cpt = 0;
 //float kalPitch = 0;
 //float kalRoll = 0;
 
-void I2Cread(uint8_t Address, uint8_t Register, uint8_t Nbytes, uint8_t* Data)
-{
+void I2Cread(uint8_t Address, uint8_t Register, uint8_t Nbytes, uint8_t* Data) {
   Wire.beginTransmission(Address);
   Wire.write(Register);
   Wire.endTransmission();
@@ -99,48 +96,34 @@ void I2Cread(uint8_t Address, uint8_t Register, uint8_t Nbytes, uint8_t* Data)
 }
 
 
-void I2CwriteByte(uint8_t Address, uint8_t Register, uint8_t Data)
-{
+void I2CwriteByte(uint8_t Address, uint8_t Register, uint8_t Data) {
   Wire.beginTransmission(Address);
   Wire.write(Register);
   Wire.write(Data);
   Wire.endTransmission();
 }
 
-void callback()
-{
+void callback() {
   intFlag = true;
   digitalWrite(13, digitalRead(13) ^ 1);
 }
 
-void setup()
-{ 
+void setup()   { 
   Wire.begin();
   Serial.begin(115200);
 
-  // Set accelerometers low pass filter at 5Hz
-  I2CwriteByte(MPU9250_ADDRESS, 29, 0x06);
-  // Set gyroscope low pass filter at 5Hz
-  I2CwriteByte(MPU9250_ADDRESS, 26, 0x06);
+  I2CwriteByte(MPU9250_ADDRESS, 29, 0x06);                      // Set accelerometers low pass filter at 5Hz
+  I2CwriteByte(MPU9250_ADDRESS, 26, 0x06);                      // Set gyroscope low pass filter at 5Hz
 
+  I2CwriteByte(MPU9250_ADDRESS, 27, GYRO_FULL_SCALE_1000_DPS);  // Configure gyroscope range
+  I2CwriteByte(MPU9250_ADDRESS, 28, ACC_FULL_SCALE_4_G);        // Configure accelerometers range
+  I2CwriteByte(MPU9250_ADDRESS, 0x37, 0x02);                    // Set by pass mode for the magnetometers
 
-  // Configure gyroscope range
-  I2CwriteByte(MPU9250_ADDRESS, 27, GYRO_FULL_SCALE_1000_DPS);
-  // Configure accelerometers range
-  I2CwriteByte(MPU9250_ADDRESS, 28, ACC_FULL_SCALE_4_G);
-  // Set by pass mode for the magnetometers
-  I2CwriteByte(MPU9250_ADDRESS, 0x37, 0x02);
-
-  // Request continuous magnetometer measurements in 16 bits
-  I2CwriteByte(MAG_ADDRESS, 0x0A, 0x16);
+  I2CwriteByte(MAG_ADDRESS, 0x0A, 0x16);                        // Request continuous magnetometer measurements in 16 bits
 
   pinMode(13, OUTPUT);
-  Timer1.initialize(10000);         // initialize timer1, and set a 1/2 second period
-  Timer1.attachInterrupt(callback);  // attaches callback() as a timer overflow interrupt
-
-
-  // Store initial time
-  ti = millis();
+  Timer1.initialize(10000);                                     // initialize timer1, and set a 1/2 second period
+  Timer1.attachInterrupt(callback);                             // attaches callback() as a timer overflow interrupt
 
   //motor pin layout:
   pinMode(Motor1_PWM_Pin, OUTPUT);
@@ -154,35 +137,15 @@ void setup()
   pinMode(Motor3_in2_Pin, OUTPUT);
 }
 
-static inline double offset (double motor_value){
-    if (motor1Output <= 0){
-      return motor_value-60;
-    }
-    return motor_value+60;
-  }
 
 void loop(){
-
-
   while (!intFlag);
   intFlag = false;
 
-  //  // Display time
-  //  Serial.print (millis()-ti,DEC);
-  //  Serial.print ("\t");
-  //
-  //
-  // _______________
   // ::: Counter :::
-
   // Display data counter
   //  Serial.print (cpt++,DEC);
   //  Serial.print ("\t");
-
-
-
-  // ____________________________________
-  // :::  accelerometer and gyroscope :::
 
   // Read accelerometer and gyroscope
   uint8_t Buf[14];
@@ -193,12 +156,15 @@ void loop(){
   // Accelerometer
   int16_t ax = -(Buf[0] << 8 | Buf[1]); //pitch
   int16_t ay = -(Buf[2] << 8 | Buf[3]); //roll
-  int16_t az = Buf[4] << 8 | Buf[5];
+        // int16_t az = Buf[4] << 8 | Buf[5];  /// WORDT NIET GEBRUIKT
+  
   //int16_t alin = sqrt(ay^2+ az^2);
+
   // Gyroscope
   int16_t gx = -(Buf[8] << 8 | Buf[9]);
   int16_t gy = -(Buf[10] << 8 | Buf[11]);
-  int16_t gz = Buf[12] << 8 | Buf[13];
+         //  int16_t gz = Buf[12] << 8 | Buf[13]; /// WORDT NIET GEBRUIKT
+
 
   //accPitch = -(atan2(ax, alin)*180.0)/M_PI;
   //accRoll  = (atan2(ay, az)*180.0)/M_PI;
@@ -206,6 +172,15 @@ void loop(){
   // Kalman filter
   //kalPitch = kalmanY.update(accPitch, gy);
   //kalRoll = kalmanX.update(accRoll, gx);
+
+
+
+// Define Axes
+  int16_t aP = ax;
+  int16_t a1 = (sqrt(3.)/2)*ay+(0.5)*ax;
+  int16_t a2 = (sqrt(3.)/2)*ay-(0.5)*ax;
+
+
 
   // Display values
 
@@ -229,113 +204,36 @@ void loop(){
   //Serial.println("");
   //  delay(100);
 
-  //PID loop
+
+  currentTime = millis();                                      //get current time
+  elapsedTime = (double)(currentTime - previousTime);          //compute time elapsed from previous computation
+
+  double pitch_Setpoint = 0; 
+  double a1_Setpoint = 0;
+  double a2_Setpoint = 0;
+
+// OLD PID
 //double roll_Setpoint = 0; 
 //  roll_input = map(-(Buf[2] << 8 | Buf[3]), -8500, 8500, -1023, 1023);
 //  //double roll_offset = -179.32;
 //  //roll_input = map(kalRoll - roll_offset, -800, 800, -1023, 1023);
 //  roll_output = map(computePID_roll(roll_input, roll_Setpoint), -10000, 10000, -255, 255);
 
-  double pitch_Setpoint = 0; 
-  pitch_input = map(-(Buf[0] << 8 | Buf[1]), -8500, 8500, -1023, 1023);
-  //double pitch_offset = 66.3;
-  //pitch_input = map(kalPitch - pitch_offset, -800, 800, -1023, 1023);              
-  pitch_output = map(computePID_pitch(pitch_input, pitch_Setpoint), -10000, 10000, -255, 255);
-  
-  double a1_Setpoint = 0;
-  int16_t a1 = (sqrt(3.)/2)*ay+(0.5)*ax;
-  a1_input = map(a1, -8500, 8500, -1023, 1023);
-  a1_output = map(computePID_a1(a1_input, a1_Setpoint), -10000, 10000, -255, 255);
+  //PID's
+  aP_output = computePID_pitch(aP, pitch_Setpoint);
+  a1_output = computePID_a1(a1, a1_Setpoint);
+  a2_output = computePID_a2(a2, a2_Setpoint);
 
-  double a2_Setpoint = 0;
-  int16_t a2 = (sqrt(3.)/2)*ay-(0.5)*ax;
-  a2_input = map(a2, -8500, 8500, -1023, 1023);
-  a2_output = map(computePID_a2(a2_input, a2_Setpoint), -10000, 10000, -255, 255);
+  previousTime = currentTime;                                  //remember current time
 
-  //MotorControl
-  motor1Output = pitch_output*pitch_Offset + a2_output;
-  motor2Output = -pitch_output*pitch_Offset + a1_output;
-  motor3Output = (-a1_output - a2_output)/1.379;
-
-//  motor1Output = offset(motor1Output);
-//  motor2Output = offset(motor2Output);
-//  motor3Output = offset(motor3Output);
-
-//  if(abs(ax) >= abs(a1) && abs(ax) >= abs(a2)){
-//    a1_output = 0;
-//    a2_output = 0;
-//  }
-  
-  if(abs(motor1Output) <= abs(motor2Output) && abs(motor1Output) <= abs(motor3Output)){
-    motor1Output = 0;
-    if(motor2Output <= 0){
-      motor2Output = motor2Output-60;
-    }
-    if(motor2Output >= 0){
-      motor2Output = motor2Output+60;
-    }
-    if(motor3Output <= 0){
-      motor3Output = motor3Output-60;
-    }
-    if(motor3Output >= 0){
-      motor3Output = motor3Output+60;
-    }
-  }
-  else if(abs(motor2Output) <= abs(motor1Output) && abs(motor2Output) <= abs(motor3Output)){
-    motor2Output = 0;
-    if(motor1Output <= 0){
-      motor1Output = motor1Output-60;
-    }
-    if(motor1Output >= 0){
-      motor1Output = motor1Output+60;
-    }
-    if(motor3Output <= 0){
-      motor3Output = motor3Output-60;
-    }
-    if(motor3Output >= 0){
-      motor3Output = motor3Output+60;
-    }
-  }
-  else if(abs(motor3Output) <= abs(motor1Output) && abs(motor3Output) <= abs(motor2Output)){
-    motor3Output = 0;
-    if(motor1Output <= 0){
-    motor1Output = motor1Output-60;
-    }
-    if(motor1Output >= 0){
-      motor1Output = motor1Output+60;
-    }
-    if(motor2Output <= 0){
-      motor2Output = motor2Output-60;
-    }
-    if(motor2Output >= 0){
-      motor2Output = motor2Output+60;
-    }
-  }
-
-  if (motor1Output >= 255) {
-  motor1Output = 255;
-  }
-  if (motor1Output <= -255) {
-  motor1Output = -255;
-  }
-
-  if(motor2Output >= 255){
-  motor2Output = 255;
-  }
-  if(motor2Output <= -255){
-  motor2Output = -255;
-  }
-
-  if(motor3Output >= 255){
-  motor3Output = 255;
-  }
-  if(motor3Output <= -255){
-  motor3Output = -255;
-  }
-
+  //Sum PID's and process in Motor Controller
+  motor1Output = aP_output + a2_output;
+  motor2Output = -aP_output + a1_output;
+  motor3Output = (-a1_output - a2_output);
   
   //setMotors(200, 200, 200);
   setMotors(motor1Output, motor2Output, motor3Output);
+
   Serial.print(motor1Output);
   Serial.print("\t");
   Serial.print(motor2Output);
@@ -346,75 +244,45 @@ void loop(){
 
 //PID for pitch control:
 double computePID_pitch(double inp, double Setpoint) {
-  unsigned long currentTime, previousTime;
-  double elapsedTime;
   double error;
   double lastError;
   double cumError, rateError;
   
-  currentTime = millis();                                      //get current time
-  elapsedTime = (double)(currentTime - previousTime);          //compute time elapsed from previous computation
-
   error = Setpoint - inp;                                      // determine error
   cumError = error * elapsedTime;                             // compute integral
   rateError = (error - lastError) / elapsedTime;               // compute derivative
-
   double out = kp * error + ki * cumError + kd * rateError;
 
   lastError = error;                                           //remember current error
-  previousTime = currentTime;                                  //remember current time
-
   return out;                                                  //have function return the PID output
 }
 
 //PID for axis 1 control:
 double computePID_a1(double inp_a1, double Setpoint_a1) {
-  unsigned long currentTime_a1, previousTime_a1;
-  double elapsedTime_a1;
   double error_a1;
   double lastError_a1;
   double cumError_a1, rateError_a1;
   
-  currentTime_a1  = millis();                                      //get current time
-  elapsedTime_a1 = (double)(currentTime_a1 - previousTime_a1);          //compute time elapsed from previous computation
-
   error_a1 = Setpoint_a1 - inp_a1;                                      // determine error
-  cumError_a1 = error_a1 * elapsedTime_a1;                             // compute integral
-  rateError_a1 = (error_a1 - lastError_a1) / elapsedTime_a1;               // compute derivative
-
+  cumError_a1 = error_a1 * elapsedTime;                             // compute integral
+  rateError_a1 = (error_a1 - lastError_a1) / elapsedTime;               // compute derivative
   double out_a1 = kp * error_a1 + ki * cumError_a1 + kd * rateError_a1;
 
   lastError_a1 = error_a1;                                           //remember current error
-  previousTime_a1 = currentTime_a1;                                  //remember current time
-
   return out_a1;                                                  //have function return the PID output
 }
 
 //PID for axis 2 control:
 double computePID_a2(double inp_a2, double Setpoint_a2) {
-  unsigned long currentTime_a2, previousTime_a2;
-  double elapsedTime_a2;
   double error_a2;
   double lastError_a2;
   double cumError_a2, rateError_a2;
   
-  currentTime_a2  = millis();                                      //get current time
-  elapsedTime_a2 = (double)(currentTime_a2 - previousTime_a2);          //compute time elapsed from previous computation
-
   error_a2 = Setpoint_a2 - inp_a2;                                      // determine error
-  cumError_a2 = error_a2 * elapsedTime_a2;                             // compute integral
-  rateError_a2 = (error_a2 - lastError_a2) / elapsedTime_a2;               // compute derivative
-
+  cumError_a2 = error_a2 * elapsedTime;                             // compute integral
+  rateError_a2 = (error_a2 - lastError_a2) / elapsedTime;               // compute derivative
   double out_a2 = kp * error_a2 + ki * cumError_a2 + kd * rateError_a2;
 
   lastError_a2 = error_a2;                                           //remember current error
-  previousTime_a2 = currentTime_a2;                                  //remember current time
-
   return out_a2;                                                  //have function return the PID output
 }
-
-
-
-
-
-
