@@ -12,7 +12,7 @@ unsigned long start_time = 0;
 void count() {counter = counter + 1;}
 
 void setupMicrophone(){
-      attachInterrupt(digitalPinToInterrupt(MICROPHONE_PIN), count , RISING); //Microphone pin
+      attachInterrupt(digitalPinToInterrupt(MICROPHONE_PIN), count , FALLING); //Microphone pin
 }
 
 
