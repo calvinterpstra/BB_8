@@ -4,8 +4,8 @@ int freq = 0;
 int counter = 0;
 unsigned long timer = 0;
 unsigned long start_time = 0;
-#define F_MAX 1900 //Max. frequency [Hz]
-#define F_MIN 1700 //Min. frequency [Hz]
+#define F_MAX 1850 //Max. frequency [Hz]
+#define F_MIN 1750 //Min. frequency [Hz]
 #define MICROPHONE_PIN 2 //Pin connected to Microphone (MUST BE INTERRUPT PIN!)
 
 
