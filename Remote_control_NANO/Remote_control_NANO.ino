@@ -23,6 +23,12 @@ int x = 0;
 int y = 0;
 char currentState = OFF;
 
+void readHC12feedback(){
+  while (HC12.available()) {             // If HC-12 has data
+   Serial.print(HC12.read());          
+  }
+}
+
 void setup() {
   Serial.begin(9600);                   // Open serial port to computer
 
@@ -39,26 +45,78 @@ void setup() {
   pinMode(greenPin, OUTPUT);
   pinMode(bluePin, OUTPUT);
 
+
+  pinMode(X_Pin, INPUT);
+  pinMode(Y_Pin, INPUT);
+
+  
+  setColor(OFF);
+}
+
+// States
+void off(){
+  if (listenMicrophone()){
+    Serial.println("Signaal ontvangen");
+    detachInterrupt(digitalPinToInterrupt(MICROPHONE_PIN)); //done listening
+    switchState(BALANCE);
+  }
+}
+
+void balance(){
+  setColor(BALANCE);
+  Serial.print("b, ");
+  readHC12feedback();
+  char Joystick_state = readJoystick();
+  switchState(Joystick_state);
+}
+
+void forward(){
+  setColor(FORWARD);
+  Serial.print("f, ");
+  readHC12feedback();
+  char Joystick_state = readJoystick();
+  switchState(Joystick_state);
+}
+
+void left(){
+  setColor(LEFT);
+  Serial.print("l, ");
+  readHC12feedback();
+  char Joystick_state = readJoystick();
+  switchState(Joystick_state);
+}
+
+void right(){
+  setColor(RIGHT);
+  Serial.print("r, ");
+  readHC12feedback();
+  char Joystick_state = readJoystick();
+  switchState(Joystick_state);
 }
 
 void loop() {
-  readHC12feedback();
-  char Joystick_state = readJoystick(); 
-  readKeyboard();
-  if (currentState==OFF){
-    setColor(255,108,0);
-      if (listenMicrophone()){
-        Serial.print("Signaal ontvangen");
-        setColor(0,255,0);
-        detachInterrupt(digitalPinToInterrupt(MICROPHONE_PIN)); //done listening
-        switchState(BALANCE);
-      }
+//  Serial.print("state: ");
+//  Serial.println(currentState);
+  switch (currentState){
+    case(OFF):
+      off();
+      break;
+    case(BALANCE):
+      balance();
+      break;
+    case(FORWARD):
+      forward();
+      break;
+    case(LEFT):
+      left();
+      break;
+    case(RIGHT):
+      right();
+      break;
+    default:
+      break;
   }
-  
-  else if ((Joystick_state!=currentState)&(Joystick_state!=BALANCE)) { //running
-    switchState(Joystick_state);
-  }
-  delay(100);
+  getNextState();
 }
 
 void transmitHC12(char newState){
@@ -68,12 +126,49 @@ void transmitHC12(char newState){
 char readJoystick(){
   x = analogRead(X_Pin);
   y = analogRead(Y_Pin);
-//  Serial.println(x);
-  
-    if (x <= 700 && x >= 300 && y <= 700 && y >= 300) { return BALANCE;}
-    else if (x <= 300 or x >= 700) { return FORWARD;  }
-    else if (y <= 300) { return RIGHT;  }
-    else if (y >= 700) { return LEFT;   }
+  Serial.print(x);
+  Serial.print(", ");
+  Serial.println(y);
+//  if (x <= 700 && x >= 300 && y <= 700 && y >= 300) { return BALANCE;}
+  if (x >= 700) { return FORWARD;  }
+  else if (y <= 300) { return RIGHT;  }
+  else if (y >= 700) { return LEFT;   }
+  else {return BALANCE;}
+}
+
+void switchState(char newState){
+  setColor(newState);
+  currentState = newState;
+  transmitHC12(newState);
+}
+
+void getNextState(){
+  int incomingByte = 0;
+  while (Serial.available()) {
+    int incomingByte = Serial.read(); 
+//    if (incomingByte==63){transmitHC12(incomingByte);}  //get current logs
+    switch (incomingByte){
+      case(OFF):
+        attachInterrupt(digitalPinToInterrupt(MICROPHONE_PIN), count , FALLING); //Start listening
+        switchState(incomingByte);
+        break;
+      case(BALANCE):
+//        switchState(incomingByte);
+        break;
+      case(FORWARD):
+//        switchState(incomingByte);
+        break;
+      case(LEFT):
+//        switchState(incomingByte);
+        break;
+      case(RIGHT):
+//        switchState(incomingByte);
+        break;
+      default:
+        Serial.println("No such state");
+        break;
+    }
+  }
 }
 
 void setColor(int red, int green, int blue){
@@ -87,26 +182,45 @@ void setColor(int red, int green, int blue){
   analogWrite(bluePin, blue);  
 }
 
-void switchState(char newState){
-  currentState = newState;
-  transmitHC12(newState);
-}
-
-void readKeyboard(){
-  int incomingByte = 0;
-  while (Serial.available()) {
-    int incomingByte = Serial.read(); 
-    if (incomingByte==63){transmitHC12(incomingByte);}  //get current logs
-    else if (incomingByte==char('o')){
-        attachInterrupt(digitalPinToInterrupt(MICROPHONE_PIN), count , FALLING); //Start listening
-        switchState(incomingByte);
-    }
-    else if (incomingByte!=10){switchState(incomingByte);}
+void setColor(char state){
+  #ifdef COMMON_ANODE
+    red = 255 - red;
+    green = 255 - green;
+    blue = 255 - blue;
+  #endif
+  int red;
+  int green;
+  int blue;
+  switch(state){
+    case(OFF):
+      red = 255;
+      green = 0;
+      blue = 0;
+      break;
+    case(BALANCE):
+      red = 0;
+      green = 255;
+      blue = 0;
+      break;
+    case(FORWARD):
+      red = 0;
+      green = 0;
+      blue = 255;
+      break;
+    case(LEFT):
+      red = 255;
+      green = 255;
+      blue = 0;
+      break;
+    case(RIGHT):
+      red = 255;
+      green = 0;
+      blue = 255;
+      break;
+    default:
+      break;
   }
-}
-
-void readHC12feedback(){
-  while (HC12.available()) {             // If HC-12 has data
-   Serial.print(HC12.read());          
-  }
+  analogWrite(redPin, red);
+  analogWrite(greenPin, green);
+  analogWrite(bluePin, blue);  
 }

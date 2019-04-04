@@ -24,7 +24,7 @@ byte listenMicrophone(){
     Serial.println(freq);
     counter     = 0;
     
-    if(freq>=2*F_MIN && freq<=2*F_MAX){
+    if(freq>=F_MIN && freq<=F_MAX){
       return 1;
     }
   }
