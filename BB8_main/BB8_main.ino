@@ -137,6 +137,43 @@ void setup()   {
   pinMode(Motor3_in2_Pin, OUTPUT);
 }
 
+#define ACCELEROMETER_SENSITIVITY 8192.0
+#define GYROSCOPE_SENSITIVITY 65.536
+ 
+
+float small_angle_atan2(x,y){
+  //return atan2(x,y)    //takes about 1ms (according to stackOVerflow)
+
+  float a = min (abs(x), abs(y)) / max (abs(x), abs(y));
+  float s = a * a;
+  float r = ((-0.0464964749 * s + 0.15931422) * s - 0.327622764) * s * a + a;
+  if abs(y) > abs(x) return 1.57079637 - r;
+  if (x < 0) return 3.14159274 - r;
+  if (y < 0) return -r;
+}
+
+void ComplementaryFilter(short accData[3], short gyrData[3], float *pitch, float *roll)
+{   //http://www.pieter-jan.com/node/11
+    float pitchAcc, rollAcc;               
+ 
+    // Integrate the gyroscope data -> int(angularSpeed) = angle
+    *pitch += ((float)gyrData[0] / GYROSCOPE_SENSITIVITY) * elapsedTime; // Angle around the X-axis
+    *roll -= ((float)gyrData[1] / GYROSCOPE_SENSITIVITY) * elapsedTime;    // Angle around the Y-axis
+ 
+    // Compensate for drift with accelerometer data if !bullshit
+    // Sensitivity = -2 to 2 G at 16Bit -> 2G = 32768 && 0.5G = 8192
+    int forceMagnitudeApprox = abs(accData[0]) + abs(accData[1]) + abs(accData[2]);
+    if (forceMagnitudeApprox > 8192 && forceMagnitudeApprox < 32768)
+    {
+	// Turning around the X axis results in a vector on the Y-axis
+        pitchAcc = small_angle_atan2((float)accData[1], (float)accData[2]) * 180 / 3.14159274;
+        *pitch = *pitch * 0.98 + pitchAcc * 0.02;
+ 
+	// Turning around the Y axis results in a vector on the X-axis
+        rollAcc = small_angle_atan2((float)accData[0], (float)accData[2]) * 180 / 3.14159274;
+        *roll = *roll * 0.98 + rollAcc * 0.02;
+    }
+} 
 
 void loop(){
   while (!intFlag);
@@ -156,26 +193,29 @@ void loop(){
   // Accelerometer
   int16_t ax = -(Buf[0] << 8 | Buf[1]); //pitch
   int16_t ay = -(Buf[2] << 8 | Buf[3]); //roll
-        // int16_t az = Buf[4] << 8 | Buf[5];  /// WORDT NIET GEBRUIKT
-  
-  //int16_t alin = sqrt(ay^2+ az^2);
+
+  //Accelerometer filtered
+  // int16_t az = Buf[4] << 8 | Buf[5];  
+  // int16_t alin = sqrt(ay^2+ az^2);
+  // ax = -(small_angle_atan2(ax, alin)*180.0)/M_PI;
+  // ay  = (small_angle_atan2(ay, az)*180.0)/M_PI;
+
 
   // Gyroscope
   int16_t gx = -(Buf[8] << 8 | Buf[9]);
   int16_t gy = -(Buf[10] << 8 | Buf[11]);
-         //  int16_t gz = Buf[12] << 8 | Buf[13]; /// WORDT NIET GEBRUIKT
 
-
-  //accPitch = -(atan2(ax, alin)*180.0)/M_PI;
-  //accRoll  = (atan2(ay, az)*180.0)/M_PI;
-
-  // Kalman filter
+  // Kalman filter (use ax in combination with accelerometer filter)
   //kalPitch = kalmanY.update(accPitch, gy);
   //kalRoll = kalmanX.update(accRoll, gx);
 
 
+  //CHOOSE MEASUREMENTS
+  ax = gx; //use gyo
+  ay = gy; //use gyro
 
-// Define Axes
+
+// Define new Axes
   int16_t aP = ax;
   int16_t a1 = (sqrt(3.)/2)*ay+(0.5)*ax;
   int16_t a2 = (sqrt(3.)/2)*ay-(0.5)*ax;
@@ -184,25 +224,14 @@ void loop(){
 
   // Display values
 
-  // Accelerometer
   //Serial.print (ax, DEC);
   //Serial.print ("\t");
   //Serial.print (ay,DEC);
   //  Serial.print ("\t");
-  //  Serial.print (az,DEC);
+  //Serial.print (a1,DEC);
   //  Serial.print ("\t");
-  //
-  //  // Gyroscope
-  //  Serial.print (gx,DEC);
+  //Serial.print (a2,DEC);
   //  Serial.print ("\t");
-  //  Serial.print (gy,DEC);
-  //  Serial.print ("\t");
-  //  Serial.print (gz,DEC);
-  //  Serial.print ("\t");
-
-  // End of line
-  //Serial.println("");
-  //  delay(100);
 
 
   currentTime = millis();                                      //get current time
@@ -234,12 +263,13 @@ void loop(){
   //setMotors(200, 200, 200);
   setMotors(motor1Output, motor2Output, motor3Output);
 
-  Serial.print(motor1Output);
-  Serial.print("\t");
-  Serial.print(motor2Output);
-  Serial.print("\t");
-  Serial.print(motor3Output);
-  Serial.println("");
+  //monitor output motors
+  // Serial.print(motor1Output);
+  // Serial.print("\t");
+  // Serial.print(motor2Output);
+  // Serial.print("\t");
+  // Serial.print(motor3Output);
+  // Serial.println("");
 }
 
 //PID for pitch control:
