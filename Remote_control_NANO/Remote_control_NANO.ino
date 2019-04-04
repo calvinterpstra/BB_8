@@ -1,6 +1,5 @@
 #include <SoftwareSerial.h>
 #include "microphoneListener.h"
-#include <SoftwareSerial.h>
 
 #define setPin 6 //digital
 #define X_Pin  0 //analog
@@ -32,8 +31,10 @@ void setup() {
   pinMode(setPin, OUTPUT);
   digitalWrite(setPin, HIGH);           // HC-12 normal, transparent mode
 
-
+  //Microphone setup
   setupMicrophone();
+
+  //LED Setup
   pinMode(redPin, OUTPUT);              // Configuring the LED pins
   pinMode(greenPin, OUTPUT);
   pinMode(bluePin, OUTPUT);
@@ -42,15 +43,18 @@ void setup() {
 
 void loop() {
   readHC12feedback();
-  char Joystick_state = readJoystick()); 
+  char Joystick_state = readJoystick(); 
   readKeyboard();
   if (currentState==OFF){
+    setColor(255,108,0);
       if (listenMicrophone()){
         Serial.print("Signaal ontvangen");
+        setColor(0,255,0);
         detachInterrupt(digitalPinToInterrupt(MICROPHONE_PIN)); //done listening
         switchState(BALANCE);
       }
   }
+  
   else if ((Joystick_state!=currentState)&(Joystick_state!=BALANCE)) { //running
     switchState(Joystick_state);
   }
@@ -91,8 +95,12 @@ void switchState(char newState){
 void readKeyboard(){
   int incomingByte = 0;
   while (Serial.available()) {
-    int incomingByte = Serial.read()); 
+    int incomingByte = Serial.read(); 
     if (incomingByte==63){transmitHC12(incomingByte);}  //get current logs
+    else if (incomingByte==char('o')){
+        attachInterrupt(digitalPinToInterrupt(MICROPHONE_PIN), count , FALLING); //Start listening
+        switchState(incomingByte);
+    }
     else if (incomingByte!=10){switchState(incomingByte);}
   }
 }
