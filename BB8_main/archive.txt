@@ -1,0 +1,14 @@
+float small_angle_atan2(float x,float y){
+  //return atan2(x,y);    //takes about 1ms (according to stackOVerflow)
+
+  float a = min (abs(x), abs(y)) / max (abs(x), abs(y));
+  float s = a * a;
+  float r = ((-0.0464964749 * s + 0.15931422) * s - 0.327622764) * s * a + a;
+  if (abs(y) > abs(x)) return 1.57079637 - r;
+  if (x < 0) return 3.14159274 - r;
+  if (y < 0) return -r;
+}
+
+
+
+        //pitchAcc = small_angle_atan2(ax, az) * 180 / 3.14159274;
