@@ -137,38 +137,26 @@ void setup()   {
   pinMode(Motor3_in2_Pin, OUTPUT);
 }
 
-#define GYROSCOPE_SENSITIVITY 120 //60
+#define GYROSCOPE_SENSITIVITY 220 //           goeie = 130
 
 
 float corrected_pitch;
 float corrected_roll;
 
-#define Acc_percentage 0.01
-
+#define Acc_percentage 0.005                  ///goeie = 0.04
+#define gyro_offset    27
 void ComplementaryFilter(int16_t gx,int16_t gy,int16_t ax,int16_t ay, int16_t az)
 {   //http://www.pieter-jan.com/node/11
     float pitchAcc, rollAcc;               
  
     // Integrate the gyroscope data -> int(angularSpeed) = angle
     
-    if (abs(gx)>0) corrected_pitch += ((gx-27) / GYROSCOPE_SENSITIVITY) * elapsedTime; // Angle around the X-axis
-    if (abs(gy)>0) corrected_roll  -= ((gy-27) / GYROSCOPE_SENSITIVITY) * elapsedTime;    // Angle around the Y-axis
+    corrected_pitch += ((gx-gyro_offset) / GYROSCOPE_SENSITIVITY) * elapsedTime; // Angle around the X-axis
+    corrected_roll  -= ((gy-gyro_offset) / GYROSCOPE_SENSITIVITY) * elapsedTime;    // Angle around the Y-axis
  
-    // Compensate for drift with accelerometer data if !bullshit
-    // Sensitivity = -2 to 2 G at 16Bit -> 2G = 32768 && 0.5G = 8192
-    int forceMagnitudeApprox = abs(ax) + abs(ay) + abs(az);
-   // Serial.println(forceMagnitudeApprox);
-    //if (forceMagnitudeApprox > 8192 && forceMagnitudeApprox < 32768)
-    if (true)
-    {
-	// Turning around the X axis results in a vector on the Y-axis
-
-        corrected_pitch = corrected_pitch * (1-Acc_percentage) + ax * Acc_percentage;
- 
-	// Turning around the Y axis results in a vector on the X-axis
-        rollAcc = small_angle_atan2(ax, az) * 180 / 3.14159274;
-        corrected_roll = corrected_roll * (1-Acc_percentage) + rollAcc * Acc_percentage;
-    }
+    corrected_pitch = corrected_pitch * (1-Acc_percentage) + ax * Acc_percentage;
+    corrected_roll = corrected_roll * (1-Acc_percentage) + ay * Acc_percentage;
+    
 } 
 
 void loop(){
@@ -217,8 +205,8 @@ void loop(){
   Serial.println(corrected_pitch);
 
   //CHOOSE MEASUREMENTS
-  ax = ax; //use gyo
-  ay = ay; //use gyro
+  ax = corrected_pitch; //use gyo
+  ay = corrected_roll; //use gyro
 
 
 // Define new Axes
