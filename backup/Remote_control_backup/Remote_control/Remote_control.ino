@@ -22,13 +22,15 @@ void setup() {
 void loop() {
   x = analogRead(X_Pin);
   y = analogRead(Y_Pin);
-  Serial.println(x);
+//  Serial.println(x);
 
   // Storing the incoming data into a String variable
   while (HC12.available()) {             // If HC-12 has data
     incomingByte = HC12.read();          // Store each icoming byte from HC-12
     readBuffer += char(incomingByte);    // Add each byte to ReadBuffer string variable
+    Serial.print(readBuffer);
   }
+  readBuffer = "";
   delay(100);
   // Sending data from one HC-12 to another via the Serial Monitor
   while (Serial.available()) {
