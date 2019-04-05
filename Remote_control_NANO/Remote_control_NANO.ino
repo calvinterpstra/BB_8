@@ -65,7 +65,8 @@ void off(){
 void balance(){
   setColor(BALANCE);
   Serial.print("b, ");
-  readHC12feedback();
+//  readHC12feedback();
+  transmitHC12(BALANCE);
   char Joystick_state = readJoystick();
   switchState(Joystick_state);
 }
@@ -73,7 +74,8 @@ void balance(){
 void forward(){
   setColor(FORWARD);
   Serial.print("f, ");
-  readHC12feedback();
+//  readHC12feedback();
+  transmitHC12(FORWARD);
   char Joystick_state = readJoystick();
   switchState(Joystick_state);
 }
@@ -81,7 +83,8 @@ void forward(){
 void left(){
   setColor(LEFT);
   Serial.print("l, ");
-  readHC12feedback();
+//  readHC12feedback();
+  transmitHC12(LEFT);
   char Joystick_state = readJoystick();
   switchState(Joystick_state);
 }
@@ -89,7 +92,8 @@ void left(){
 void right(){
   setColor(RIGHT);
   Serial.print("r, ");
-  readHC12feedback();
+//  readHC12feedback();
+  transmitHC12(RIGHT);
   char Joystick_state = readJoystick();
   switchState(Joystick_state);
 }
@@ -152,20 +156,7 @@ void getNextState(){
         attachInterrupt(digitalPinToInterrupt(MICROPHONE_PIN), count , FALLING); //Start listening
         switchState(incomingByte);
         break;
-      case(BALANCE):
-//        switchState(incomingByte);
-        break;
-      case(FORWARD):
-//        switchState(incomingByte);
-        break;
-      case(LEFT):
-//        switchState(incomingByte);
-        break;
-      case(RIGHT):
-//        switchState(incomingByte);
-        break;
       default:
-        Serial.println("No such state");
         break;
     }
   }

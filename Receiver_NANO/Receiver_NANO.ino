@@ -98,7 +98,7 @@ void readKeyboardAndHC12()
   }
   while (HC12.available()) {             // If HC-12 has data
     incomingByte = HC12.read();
-    readBuffer = char(incomingByte);    // Add each byte to ReadBuffer string variable 
+    int readBuffer = char(incomingByte);    // Add each byte to ReadBuffer string variable 
   }
   if (incomingByte == 63)      { writeCurrentState(            ); } //get current state when typed '?'
   else if (incomingByte != 10) { updateState      (incomingByte); } //update state if char is not empty
