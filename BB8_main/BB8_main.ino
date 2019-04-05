@@ -26,22 +26,18 @@
 #define Motor3_in1_Pin  12
 #define Motor3_in2_Pin  10
 
-#define  HC12_setPin 99999
-SoftwareSerial HC12(1, 0); // HC-12 TX Pin, HC-12 RX Pin
+#define wortel3_2 0.866025
+#define setPin 2
 
 
+#define motor_offset 64;
 //PID gains:
 
 //double kp = 0.1;
-//double ki = 0;// .00000002;
 //double kd = 2.8;
 
-//bigger legs
-//double kp = 0.11;
-//double kd = 4.5;
-
-double kp = 0.3;
-double kd = 5.2;
+double kp = 0.228;
+double kd = 5.5;
 
 //motor_layout:
 int motor1Output = 0;
@@ -50,7 +46,17 @@ int motor3Output = 0;
 
 uint8_t Buf[14];
 unsigned long currentTime, previousTime;
-double elapsedTime;
+double elapsedTime = 2.45;
+
+bool demoModus = false;
+
+SoftwareSerial HC12(9, 0); // HC-12 TX Pin, HC-12 RX Pin
+
+byte incomingByte;
+String readBuffer = "";
+
+unsigned long oldTime,newTime;
+
 
 void setMotor(int motorPower,int motor_PWM_Pin,int motor_in1_pin, int motor_in2_pin){
   if (motorPower>=0){
@@ -64,9 +70,9 @@ void setMotor(int motorPower,int motor_PWM_Pin,int motor_in1_pin, int motor_in2_
 
   int motor_power = abs(motorPower);
   if (motor_power>5){ 
-    if (motor_PWM_Pin==Motor1_PWM_Pin) motor_power += 155;  //offset
-    else if (motor_PWM_Pin==Motor2_PWM_Pin) motor_power +=  145;
-    else if (motor_PWM_Pin==Motor3_PWM_Pin) motor_power +=  145;   
+    if (motor_PWM_Pin==Motor1_PWM_Pin) {motor_power +=       155 - motor_offset;}  //offset
+    else if (motor_PWM_Pin==Motor2_PWM_Pin){ motor_power +=  145 - motor_offset;}
+    else if (motor_PWM_Pin==Motor3_PWM_Pin) {motor_power +=  145 - motor_offset;}
   }
   if (motor_power>253) {motor_power =254; }
 
@@ -102,6 +108,7 @@ double aP_output, a1_output, a2_output;
 float corrected_pitch;
 float corrected_roll;
 
+int16_t ax,ay,az,gx,gy, calc1,calc2,aP,a1,a2;
 
 void I2Cread(uint8_t Address, uint8_t Register, uint8_t Nbytes, uint8_t* Data) {
   Wire.beginTransmission(Address);
@@ -122,24 +129,12 @@ void I2CwriteByte(uint8_t Address, uint8_t Register, uint8_t Data) {
   Wire.endTransmission();
 }
 
-//void callback() {
-//  intFlag = true;
-////  digitalWrite(13, digitalRead(13) ^ 1);
-//}
-
-//void readHC12(){
-//  while (HC12.available()) {             // If HC-12 has data
-//    int incomingByte = HC12.read();
-//    readBuffer = char(incomingByte);    // Add each byte to ReadBuffer string variable 
-//  }
-//}
-
 void setup()   { 
   Wire.begin();
-  // HC12.begin(9600);               // Open serial port to HC12
   Serial.begin(2000000);
-  //pinMode(HC12_setPin, OUTPUT);
- // digitalWrite(HC12_setPin, HIGH);     // HC-12 normal mode
+  HC12.begin(9600);               // Open serial port to HC12
+  pinMode(setPin, OUTPUT);
+  digitalWrite(setPin, HIGH);     // HC-12 normal mode
 
   I2CwriteByte(MPU9250_ADDRESS, 29, 0x06);                      // Set accelerometers low pass filter at 5Hz
   I2CwriteByte(MPU9250_ADDRESS, 26, 0x06);                      // Set gyroscope low pass filter at 5Hz
@@ -149,11 +144,6 @@ void setup()   {
   I2CwriteByte(MPU9250_ADDRESS, 0x37, 0x02);                    // Set by pass mode for the magnetometers
 
   I2CwriteByte(MAG_ADDRESS, 0x0A, 0x16);                        // Request continuous magnetometer measurements in 16 bits
-
-//  pinMode(13, OUTPUT);
-//  Timer1.initialize(10000);                                     // initialize timer1, and set a 1/2 second period
-//  Timer1.attachInterrupt(callback);                             // attaches callback() as a timer overflow interrupt
-
 
   //motor pin layout:
   pinMode(Motor1_PWM_Pin, OUTPUT);
@@ -168,14 +158,29 @@ void setup()   {
 
   I2Cread(MPU9250_ADDRESS, 0x3B, 14, Buf);
 
+  if (demoModus){
+    //elapsedTime += 10;
+  }
   //set initial values
-  corrected_pitch = -(Buf[0] << 8 | Buf[1]); //pitch
-  corrected_roll = -(Buf[2] << 8 | Buf[3]); //roll
+  ax = -(Buf[0] << 8 | Buf[1]); //pitch
+  ay = -(Buf[2] << 8 | Buf[3]); //roll
+  
+  aP = corrected_pitch;
+  calc1 = wortel3_2*corrected_roll; //is used twice, only calculated once
+  calc2 = 0.5*corrected_pitch;
+  a1 = calc1+calc2;
+  a2 = calc1-calc2;
+  
+  pitch_Setpoint = ax; //pitch
+  a1_Setpoint = a1;
+  a2_Setpoint = a2;
+
+  corrected_pitch = ax;
+  corrected_roll = ay; //roll
+  
 }
 
-#define GYROSCOPE_SENSITIVITY 220 //           goeie = 130
-
-
+#define GYROSCOPE_SENSITIVITY 180 //           goeie = 130
 #define Acc_percentage 0.005                  ///goeie = 0.04
 #define gyro_offsetx    27
 #define gyro_offsety    49
@@ -195,46 +200,39 @@ void ComplementaryFilter(int16_t gx,int16_t gy,int16_t ax,int16_t ay, int16_t az
 } 
 
 void loop(){
-//  while (!intFlag);
-//  intFlag = false;
 
-  // readHC12();
-  // ::: Counter :::
-  // Display data counter
-  //  Serial.print (cpt++,DEC);
-  //  Serial.print ("\t");
+  //send and receive HC12
+  while (HC12.available()) {             // If HC-12 has data
+    incomingByte = HC12.read();
+    Serial.print(char(incomingByte));
+  }
+
+//  while (Serial.available()) {
+//    HC12.write(Serial.read());
+//  }
 
   // Read accelerometer and gyroscope
 
   I2Cread(MPU9250_ADDRESS, 0x3B, 14, Buf);
 
   // Accelerometer
-  int16_t ax = -(Buf[0] << 8 | Buf[1]); //pitch
-  int16_t ay = -(Buf[2] << 8 | Buf[3]); //roll
-  int16_t az = Buf[4] << 8 | Buf[5];  
+  ax = -(Buf[0] << 8 | Buf[1]); //pitch
+  ay = -(Buf[2] << 8 | Buf[3]); //roll
+  az = Buf[4] << 8 | Buf[5];  
 
   // Gyroscope
-  int16_t gy = -(Buf[8] << 8 | Buf[9]);
-  int16_t gx = -(Buf[10] << 8 | Buf[11]);
+  gy = -(Buf[8] << 8 | Buf[9]);
+  gx = -(Buf[10] << 8 | Buf[11]);
 
 ///Filter axis
   ComplementaryFilter(gx,gy, ax,ay,az);
 
-//print angles
-//  Serial.print(gx);
-//  Serial.print(",");
-//  Serial.print(ax);
-//  Serial.print(",");
-//  Serial.println(corrected_pitch);
-//  delay(10);
-
-#define wortel3_2 0.866025
 // Define new Axes
-  int16_t aP = corrected_pitch;
-  int16_t calc1 = wortel3_2*corrected_roll; //is used twice, only calculated once
-  int16_t calc2 = 0.5*corrected_pitch;
-  int16_t a1 = calc1+calc2;
-  int16_t a2 = calc1-calc2;
+  aP = corrected_pitch;
+  calc1 = wortel3_2*corrected_roll; //is used twice, only calculated once
+  calc2 = 0.5*corrected_pitch;
+  a1 = calc1+calc2;
+  a2 = calc1-calc2;
 
 
   // Display values
@@ -245,18 +243,11 @@ void loop(){
   //Serial.println(a2);
 
 
-  currentTime = millis();                                      //get current time
-  elapsedTime = (double)(currentTime - previousTime);          //compute time elapsed from previous computation
-  previousTime = currentTime;                                  //remember current time
-  //Serial.println(elapsedTime);
-  
-
-// OLD PID
-//double roll_Setpoint = 0; 
-//  roll_input = map(-(Buf[2] << 8 | Buf[3]), -8500, 8500, -1023, 1023);
-//  //double roll_offset = -179.32;
-//  //roll_input = map(kalRoll - roll_offset, -800, 800, -1023, 1023);
-//  roll_output = map(computePID_roll(roll_input, roll_Setpoint), -10000, 10000, -255, 255);
+//  currentTime = millis();                                      //get current time
+//  elapsedTime = (double)(currentTime - previousTime);          //compute time elapsed from previous computation
+//  previousTime = currentTime;                                  //remember current time
+//  Serial.println(elapsedTime);
+//  
 
   //PID's
   aP_output = computePID_pitch(aP, pitch_Setpoint);
@@ -273,7 +264,19 @@ void loop(){
   motor2Output = -aP_output + a1_output;
   motor3Output = (-a1_output - a2_output);
 
-  setMotors(motor1Output, motor2Output, motor3Output);
+//print angles
+  if (demoModus){
+    Serial.print(gx); //Serial.print(gx);
+    Serial.print(",");
+    Serial.print(ax);   ///ax
+    Serial.print(",");
+    Serial.println(corrected_pitch);
+   // delay(10);
+  }
+  else
+  {
+    setMotors(motor1Output, motor2Output, motor3Output);
+  }
 
   //motor = keyboard output
 //  String readString;
@@ -289,8 +292,6 @@ void loop(){
 //   Serial.println(motor_set);
 //    setMotors(0, motor_set, motor_set);
 //  }
-
-
 
 }
 
