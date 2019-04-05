@@ -1,8 +1,8 @@
 #include <SoftwareSerial.h>
 
-SoftwareSerial HC12(10, 11); // HC-12 TX Pin, HC-12 RX Pin
+SoftwareSerial HC12(9, 0); // HC-12 TX Pin, HC-12 RX Pin
 
-#define setPin 6
+#define setPin 2
 
 byte incomingByte;
 String readBuffer = "";
@@ -14,11 +14,20 @@ void setup() {
   digitalWrite(setPin, HIGH);     // HC-12 normal mode
 }
 
+unsigned long oldTime,newTime;
+
 void loop() {
   // ==== Storing the incoming data into a String variable
+//  newTime = millis();
+  //Serial.println(newTime-oldTime);
+  //oldTime = newTime;
+  
   while (HC12.available()) {             // If HC-12 has data
     incomingByte = HC12.read();
-    readBuffer = char(incomingByte);    // Add each byte to ReadBuffer string variable 
-    Serial.println(readBuffer);
+    Serial.print(char(incomingByte));
+  }
+
+  while (Serial.available()) {
+    HC12.write(Serial.read());
   }
 }
