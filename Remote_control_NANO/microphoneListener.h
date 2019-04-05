@@ -23,6 +23,7 @@ byte listenMicrophone(){
     start_time  = millis();
     Serial.println(freq);
     counter     = 0;
+    
     if(freq>=F_MIN && freq<=F_MAX){
       return 1;
     }
