@@ -25,7 +25,7 @@ char currentState = OFF;
 
 void readHC12feedback(){
   while (HC12.available()) {             // If HC-12 has data
-   Serial.print(HC12.read());          
+   Serial.print(char(HC12.read()));          
   }
 }
 
@@ -93,6 +93,7 @@ void right(){
 void loop() {
 //  Serial.print("state: ");
 //  Serial.println(currentState);
+  readHC12feedback();
   switch (currentState){
     case(OFF):
       off();
