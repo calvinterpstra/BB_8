@@ -56,7 +56,7 @@ void setup() {
 // States
 void off(){
   if (listenMicrophone()){
-    Serial.println("Signaal ontvangen");
+//    Serial.println("Signaal ontvangen");
     detachInterrupt(digitalPinToInterrupt(MICROPHONE_PIN)); //done listening
     switchState(BALANCE);
   }
@@ -64,36 +64,28 @@ void off(){
 
 void balance(){
   setColor(BALANCE);
-  Serial.print("b, ");
-//  readHC12feedback();
-  transmitHC12(BALANCE);
+//  Serial.print("b, ");
   char Joystick_state = readJoystick();
   switchState(Joystick_state);
 }
 
 void forward(){
   setColor(FORWARD);
-  Serial.print("f, ");
-//  readHC12feedback();
-  transmitHC12(FORWARD);
+//  Serial.print("f, ");
   char Joystick_state = readJoystick();
   switchState(Joystick_state);
 }
 
 void left(){
   setColor(LEFT);
-  Serial.print("l, ");
-//  readHC12feedback();
-  transmitHC12(LEFT);
+//  Serial.print("l, ");
   char Joystick_state = readJoystick();
   switchState(Joystick_state);
 }
 
 void right(){
   setColor(RIGHT);
-  Serial.print("r, ");
-//  readHC12feedback();
-  transmitHC12(RIGHT);
+//  Serial.print("r, ");
   char Joystick_state = readJoystick();
   switchState(Joystick_state);
 }
@@ -130,9 +122,9 @@ void transmitHC12(char newState){
 char readJoystick(){
   x = analogRead(X_Pin);
   y = analogRead(Y_Pin);
-  Serial.print(x);
-  Serial.print(", ");
-  Serial.println(y);
+//  Serial.print(x);
+//  Serial.print(", ");
+//  Serial.println(y);
 //  if (x <= 700 && x >= 300 && y <= 700 && y >= 300) { return BALANCE;}
   if (x >= 700) { return FORWARD;  }
   else if (y <= 300) { return RIGHT;  }
@@ -141,9 +133,11 @@ char readJoystick(){
 }
 
 void switchState(char newState){
-  setColor(newState);
-  currentState = newState;
-  transmitHC12(newState);
+  if(!(newState == currentState)){
+    setColor(newState);
+    currentState = newState;
+    transmitHC12(newState);
+  }
 }
 
 void getNextState(){
