@@ -35,13 +35,13 @@
 
 
 //#define motor_offset 100;
-#define motor_offset 30
+#define motor_offset 18
 #define MOTOR_MAX 200
 //#define motor_offset 30;
 //PID gains:
 
 
-double kp = 0.18;
+double kp = 0.31;
 double kd = 4.2;
 
 //double kp = 0.014;
