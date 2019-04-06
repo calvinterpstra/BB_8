@@ -146,13 +146,12 @@ void getNextState(){
   while (Serial.available()) {
     int incomingByte = Serial.read(); 
 //    if (incomingByte==63){transmitHC12(incomingByte);}  //get current logs
-    switch (incomingByte){
-      case(OFF):
+    if (incomingByte==OFF){
         attachInterrupt(digitalPinToInterrupt(MICROPHONE_PIN), count , FALLING); //Start listening
         switchState(incomingByte);
-        break;
-      default:
-        break;
+    }
+    else{
+      HC12.print(char(incomingByte));
     }
   }
 }
