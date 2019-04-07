@@ -29,20 +29,21 @@
 #define MANUAL 2
 #define DEMO 1
 #define NORMAL 0
+#define OFF -1
 
 #define wortel3_2 0.866025
 #define setPin 2
 
 
 //#define motor_offset 100;
-#define motor_offset 18
+#define motor_offset 16
 #define MOTOR_MAX 200
 //#define motor_offset 30;
 //PID gains:
 
 
-double kp = 0.31;
-double kd = 4.2;
+double kp = 0.334;
+double kd = 8.6;                                  ;
 
 //double kp = 0.014;
 //double kd = 0.8;
@@ -56,7 +57,7 @@ uint8_t Buf[14];
 unsigned long currentTime, previousTime;
 double elapsedTime = 2.462;
 
-int modus = NORMAL;
+int modus = OFF;
 
 SoftwareSerial HC12(3, 9); // HC-12 TX Pin, HC-12 RX Pin
 
@@ -215,6 +216,9 @@ void loop(){
   while (HC12.available()) {             // If HC-12 has data
     incomingByte = char(HC12.read());
     Serial.print(incomingByte);
+    if ((modus==OFF)&&(incomingByte=='b')){
+      modus=NORMAL;
+    }
     if (incomingByte == 'd'){
       modus = DEMO;
     }
