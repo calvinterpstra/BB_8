@@ -30,7 +30,7 @@ void readHC12feedback(){
 }
 
 void setup() {
-  Serial.begin(9600);                   // Open serial port to computer
+  Serial.begin(2000000);                   // Open serial port to computer
 
   //setup HC12
   HC12.begin(9600);                     // Open serial port to HC12
@@ -130,6 +130,7 @@ char readJoystick(){
   if (x >= 700) { return FORWARD;  }
   else if (y <= 300) { return RIGHT;  }
   else if (y >= 700) { return LEFT;   }
+  else if (x<=300) { transmitHC12('m'); return BALANCE; }
   else {return BALANCE;}
 }
 

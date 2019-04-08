@@ -20,24 +20,33 @@
 #define Motor1_in1_Pin  7
 #define Motor1_in2_Pin  8
 #define Motor2_PWM_Pin  5
-#define Motor2_in1_Pin  3
+#define Motor2_in1_Pin  13
 #define Motor2_in2_Pin  4
 #define Motor3_PWM_Pin  11
 #define Motor3_in1_Pin  12
 #define Motor3_in2_Pin  10
 
+#define MANUAL 2
+#define DEMO 1
+#define NORMAL 0
+#define OFF -1
+
 #define wortel3_2 0.866025
 #define setPin 2
 
 
-#define motor_offset 64;
+//#define motor_offset 100;
+#define motor_offset 16
+#define MOTOR_MAX 200
+//#define motor_offset 30;
 //PID gains:
 
-//double kp = 0.1;
-//double kd = 2.8;
 
-double kp = 0.228;
-double kd = 5.5;
+double kp = 0.334;
+double kd = 8.6;                                  ;
+
+//double kp = 0.014;
+//double kd = 0.8;
 
 //motor_layout:
 int motor1Output = 0;
@@ -46,13 +55,13 @@ int motor3Output = 0;
 
 uint8_t Buf[14];
 unsigned long currentTime, previousTime;
-double elapsedTime = 2.45;
+double elapsedTime = 2.462;
 
-bool demoModus = false;
+int modus = OFF;
 
-SoftwareSerial HC12(9, 0); // HC-12 TX Pin, HC-12 RX Pin
+SoftwareSerial HC12(3, 9); // HC-12 TX Pin, HC-12 RX Pin
 
-byte incomingByte;
+char incomingByte;
 String readBuffer = "";
 
 unsigned long oldTime,newTime;
@@ -70,20 +79,22 @@ void setMotor(int motorPower,int motor_PWM_Pin,int motor_in1_pin, int motor_in2_
 
   int motor_power = abs(motorPower);
   if (motor_power>5){ 
-    if (motor_PWM_Pin==Motor1_PWM_Pin) {motor_power +=       155 - motor_offset;}  //offset
-    else if (motor_PWM_Pin==Motor2_PWM_Pin){ motor_power +=  145 - motor_offset;}
-    else if (motor_PWM_Pin==Motor3_PWM_Pin) {motor_power +=  145 - motor_offset;}
+    if (motor_PWM_Pin==Motor1_PWM_Pin) {motor_power +=       150 -motor_offset;}  //offset
+    else if (motor_PWM_Pin==Motor2_PWM_Pin){ motor_power +=  150 - motor_offset;}
+    else if (motor_PWM_Pin==Motor3_PWM_Pin) {motor_power +=  140 - motor_offset;}
   }
-  if (motor_power>253) {motor_power =254; }
+  if (motor_power>MOTOR_MAX) {motor_power = MOTOR_MAX; }
 
   analogWrite(motor_PWM_Pin, motor_power);
 }
 
 void setMotors(int motor1Power, int motor2Power, int motor3Power) {
-//  int minimum_power = min(abs(motor1Power), min(abs(motor2Power),abs(motor3Power)));
-//  if (abs(motor1Power) == abs(minimum_power)){motor1Power = 0;}
-//  else if (abs(motor2Power) == abs(minimum_power)){motor2Power = 0;}
-//  else if (abs(motor3Power) == abs(minimum_power)){motor3Power = 0;}
+  if (modus!=MANUAL){
+    int minimum_power = min(abs(motor1Power), min(abs(motor2Power),abs(motor3Power)));
+    if (abs(motor1Power) == abs(minimum_power)){motor1Power = 0;}
+    else if (abs(motor2Power) == abs(minimum_power)){motor2Power = 0;}
+    else if (abs(motor3Power) == abs(minimum_power)){motor3Power = 0;}
+  }
 
   setMotor(motor1Power,Motor1_PWM_Pin,Motor1_in1_Pin,Motor1_in2_Pin);
   setMotor(motor2Power,Motor2_PWM_Pin,Motor2_in1_Pin,Motor2_in2_Pin);
@@ -158,8 +169,8 @@ void setup()   {
 
   I2Cread(MPU9250_ADDRESS, 0x3B, 14, Buf);
 
-  if (demoModus){
-    //elapsedTime += 10;
+  if (modus==DEMO){
+    elapsedTime += 15;
   }
   //set initial values
   ax = -(Buf[0] << 8 | Buf[1]); //pitch
@@ -203,8 +214,25 @@ void loop(){
 
   //send and receive HC12
   while (HC12.available()) {             // If HC-12 has data
-    incomingByte = HC12.read();
-    Serial.print(char(incomingByte));
+    incomingByte = char(HC12.read());
+    Serial.print(incomingByte);
+    if ((modus==OFF)&&(incomingByte=='b')){
+      modus=NORMAL;
+    }
+    if (incomingByte == 'd'){
+      modus = DEMO;
+    }
+    else if (incomingByte == 'm'){
+      if (modus==MANUAL)      modus = NORMAL;
+      else modus = MANUAL;
+      setMotors(0,0,0);
+    }
+    else if (modus==MANUAL){
+      if (incomingByte == 'b') setMotors(0,0,0);
+      else if (incomingByte == 'f') setMotors(MOTOR_MAX,-MOTOR_MAX,0);
+      else if (incomingByte == 'r') setMotors(-100,-100,-100);
+      else if (incomingByte == 'l') setMotors(100,100,100);
+    }
   }
 
 //  while (Serial.available()) {
@@ -254,6 +282,9 @@ void loop(){
   a1_output = computePID_a1(a1, a1_Setpoint);
   a2_output = computePID_a2(a2, a2_Setpoint);
 
+//  aP_output = aP_output*abs(aP_output);
+//  a1_output = a1_output*abs(a1_output);
+//  a2_output = a2_output*abs(a2_output);
  // Serial.write(',');
  // Serial.println(aP_output);
 
@@ -265,20 +296,20 @@ void loop(){
   motor3Output = (-a1_output - a2_output);
 
 //print angles
-  if (demoModus){
+  if (modus==DEMO){
     Serial.print(gx); //Serial.print(gx);
     Serial.print(",");
     Serial.print(ax);   ///ax
     Serial.print(",");
     Serial.println(corrected_pitch);
-   // delay(10);
+    delay(15);
   }
-  else
+  else if (modus==NORMAL)
   {
     setMotors(motor1Output, motor2Output, motor3Output);
   }
 
-  //motor = keyboard output
+                          //motor = keyboard output;
 //  String readString;
 //  while (Serial.available()) {
 //    char c = Serial.read();  //gets one byte from serial buffer
@@ -288,9 +319,9 @@ void loop(){
 //
 //  if (readString.length() >0) {
 //      Serial.println(readString);//so you can see the captured string 
-//    int motor_set = readString.toInt();  //convert readString into a number
-//   Serial.println(motor_set);
-//    setMotors(0, motor_set, motor_set);
+//      int motor_set = readString.toInt();  //convert readString into a number
+//      Serial.println(motor_set);
+//      setMotors(motor_set, -motor_set,0);
 //  }
 
 }
@@ -298,16 +329,17 @@ void loop(){
 //PID for pitch control:
 double error,error_a1,error_a2;
 double lastError,lastError_a1,lastError_a2;
-//double cumError, cumError_a1,cumError_a2;
+double rateErrorAvg, rateErrorAvg1,rateErrorAvg2;
 double rateError, rateError_a1,rateError_a2;
 
 double computePID_pitch(double inp, double Setpoint) {
   error = Setpoint - inp;                                      // determine error
   //cumError = error * elapsedTime;                             // compute integral
   rateError = (error - lastError) / elapsedTime;               // compute derivative
+  rateErrorAvg = (0.1*rateErrorAvg+0.9*rateError);
   
   lastError = error;                                           //remember current error
-  return (kp * error + kd * rateError);         //ki * cumError + 
+  return (kp * error + kd * rateErrorAvg);         //ki * cumError + 
 }
 
 //PID for axis 1 control:
@@ -315,16 +347,18 @@ double computePID_a1(double inp_a1, double Setpoint_a1) {
   error_a1 = Setpoint_a1 - inp_a1;                                      // determine error
 //  cumError_a1 = error_a1 * elapsedTime;                             // compute integral
   rateError_a1 = (error_a1 - lastError_a1) / elapsedTime;               // compute derivative
+  rateErrorAvg1 = (0.1*rateErrorAvg1+0.9*rateError_a1);
    
   lastError_a1 = error_a1;                                           //remember current error
-  return (kp * error_a1  + kd * rateError_a1);                   // + ki * cumError_a1
+  return (kp * error_a1  + kd * rateErrorAvg1);                   // + ki * cumError_a1
 }
 //PID for axis 2 control:
 double computePID_a2(double inp_a2, double Setpoint_a2) {
   error_a2 = Setpoint_a2 - inp_a2;                                      // determine error
 //  cumError_a2 = error_a2 * elapsedTime;                             // compute integral
   rateError_a2 = (error_a2 - lastError_a2) / elapsedTime;               // compute derivative
+  rateErrorAvg2 = (0.1*rateErrorAvg2+0.9*rateError_a2);                //running average for small looptime
 
   lastError_a2 = error_a2;                                           //remember current error
-  return (kp * error_a2 + kd * rateError_a2);                    //ki * cumError_a2 
+  return (kp * error_a2 + kd * rateErrorAvg2);                    //ki * cumError_a2 
 }
